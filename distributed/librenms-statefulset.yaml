@@ -83,7 +83,7 @@ spec:
     spec:
       initContainers:
       - name: init-librenmsdb
-        image: jarischaefer/docker-librenms
+        image: jarischaefer/docker-librenms:latest
         env:
         - name: DB_HOST
           value: "mysql"
@@ -120,7 +120,7 @@ spec:
         - "cd /opt/librenms && php /opt/librenms/build-base.php && php /opt/librenms/adduser.php ${USERNAME} ${PASSWORD} 10 ${EMAIL}"
       containers:
       - name: librenms
-        image: jarischaefer/docker-librenms
+        image: jarischaefer/docker-librenms:latest
         env:
         - name: DB_HOST
           value: "mysql"
@@ -144,7 +144,7 @@ spec:
         - name: librenms-https
           containerPort: 443
         volumeMounts:
-        - name: librelogs
+        - name: librenms-logs
           mountPath: /opt/librenms/logs
         # - name: libressl
           # mountPath: /etc/nginx/ssl
@@ -177,7 +177,7 @@ spec:
               path: distributed_poller.php
   volumeClaimTemplates:
   - metadata:
-      name: librelogs
+      name: librenms-logs
     spec:
       accessModes: ["ReadWriteOnce"]
       resources:

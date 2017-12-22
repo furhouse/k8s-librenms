@@ -55,7 +55,7 @@ spec:
     spec:
       containers:
       - name: librenms-pollers
-        image: jarischaefer/docker-librenms
+        image: jarischaefer/docker-librenms:latest
         env:
         - name: DB_HOST
           value: "mysql"

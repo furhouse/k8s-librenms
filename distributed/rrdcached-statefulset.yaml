@@ -29,12 +29,20 @@ spec:
       containers:
       - name: rrdcached
         image: furhouse/docker-rrdcached:latest
+        imagePullPolicy: Never
+        env:
+        - name: WRITE_TIMEOUT
+          value: "900"
+        - name: DELAY
+          value: "900"
+        - name: CACHE_TIMEOUT
+          value: "1800"
         ports:
         - containerPort: 42217
           protocol: TCP
         volumeMounts:
         - name: rrdcached
-          mountPath: /opt/librenms/rrd
+          mountPath: /opt/rrdcached/rrd
         # resources:
           # requests:
             # cpu: 500m
