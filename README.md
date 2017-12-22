@@ -41,7 +41,7 @@ $ ./deploy_mysql.sh
 2. To deploy the LibreNMS Service, execute the following:
 
 ```
-$ ./deploy_librenms_standalone.sh
+$ ./deploy_standalone_librenms.sh
 ```
 
 3. Re-run the following command, until the librenms-0 pod has successfully started ("Status=Running"; usually takes about a minute).
@@ -151,7 +151,7 @@ $ ./deploy_mysql.sh
 2. To deploy the LibreNMS Service, execute the following:
 
 ```
-$ ./deploy_librenms_distributed.sh
+$ ./deploy_distributed_librenms.sh
 ```
 
 3. Re-run the following command, until the librenms-0 pod has successfully started ("Status=Running"; usually takes about a minute).
