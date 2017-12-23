@@ -29,7 +29,6 @@ spec:
       containers:
       - name: rrdcached
         image: furhouse/docker-rrdcached:latest
-        imagePullPolicy: Never
         env:
         - name: WRITE_TIMEOUT
           value: "900"
@@ -47,16 +46,16 @@ spec:
           # requests:
             # cpu: 500m
             # memory: 1Gi
-        # readinessProbe:
-          # tcpSocket:
-            # port: 42217
-          # initialDelaySeconds: 5
-          # periodSeconds: 10
-        # livenessProbe:
-          # tcpSocket:
-            # port: 42217
-          # initialDelaySeconds: 15
-          # periodSeconds: 20
+        readinessProbe:
+          tcpSocket:
+            port: 42217
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 42217
+          initialDelaySeconds: 15
+          periodSeconds: 20
   volumeClaimTemplates:
   - metadata:
       name: rrdcached

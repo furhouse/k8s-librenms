@@ -8,6 +8,7 @@ Contains example Kubernetes YAML resource files (in the 'distributed/standalone'
 
 * [Standalone Setup](#21-standalone-librenms-deployment-steps)
 * [Distributed Setup](#31-distributed-librenms-deployment-steps)
+* [Customizing LibreNMS with Kubernetes Objects](#4-customizing-the-librenms-setup)
 
 ## 1 How To Run
 
@@ -249,15 +250,93 @@ If you want, you can shutdown the Minikube virtual machine with the following co
 $ minikube stop
 ```
 
-## 4 Project Details
+## 4 Customizing the LibreNMS Setup
 
-### 4.1 Factors Addressed by This Project
+### 4.1 Kubernetes Secrets
+
+The [Secret Object](https://github.com/furhouse/k8s-librenms/blob/master/standalone/librenms-statefulset.yaml#L2) contains base64 encoded strings for the admin username, password and email address.
+
+```
+$ echo "YWRtaW4=" | base64 --decode
+> admin
+$ echo "dGVzdEBleGFtcGxlLmNvbQ==" | base64 --decode
+> test@example.com
+```
+
+Create your own secrets by base64 encoding the items:
+
+```
+$ echo -n "admin" | base64
+YWRtaW4=
+$ echo -n "test@example.com" | base64
+dGVzdEBleGFtcGxlLmNvbQ==
+```
+
+### 4.2 Kubernetes ConfigMap
+
+The [ConfigMap Object](https://github.com/furhouse/k8s-librenms/blob/master/standalone/librenms-statefulset.yaml#L12) contains additional LibreNMS configuration, which will be mounted at `/opt/librenms/conf.d`.
+
+If you add additional key-value pairs to the ConfigMap, you'd also need to add them to the [items](https://github.com/furhouse/k8s-librenms/blob/master/standalone/librenms-statefulset.yaml#L148) volume.
+
+The ConfigMap keys basically contain PHP snippets, which allows for easy modification of the default LibreNMS configuration. The [Distrubuted ConfigMap Object](https://github.com/furhouse/k8s-librenms/blob/master/distributed/librenms-statefulset-pollers.yaml#L2) is an example of multiple snippets in one ConfigMap.
+
+### 4.3 Kubernetes Service
+
+To access the LibreNMS web interface, a [Service Object](https://github.com/furhouse/k8s-librenms/blob/master/standalone/librenms-statefulset.yaml#L31) is defined. This service targets the LibreNMS Pods based on the `app: librenms` selector, and ties port `80` of the Pod to port `31971` on the Minikube VM. The service is accessible outside of the Kubernetes cluster because `type` is set to `NodePort`. The `nodePort` is also used in the LibreNMS `BASE_URL` [variable](https://github.com/furhouse/k8s-librenms/blob/master/standalone/librenms-statefulset.yaml#L76).
+
+Other services, for example [memcached in the distributed setup](https://github.com/furhouse/k8s-librenms/blob/master/distributed/memcached-statefulset.yaml#L2), is only available inside of the Kubernetes cluster. Port 11211 of the Pod is exposed, and can be used by other Pods.
+
+You can access services that are exposed to the Minikube VM by using `$ minikube service <name> --url`:
+
+```
+$ kubectl get svc
+NAME         TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE
+kubernetes   ClusterIP   10.96.0.1        <none>        443/TCP                      1h
+librenms     NodePort    10.109.170.147   <none>        80:31971/TCP,443:32459/TCP   1h
+memcached    ClusterIP   None             <none>        11211/TCP                    1h
+mysql        ClusterIP   None             <none>        3306/TCP                     1h
+rrdcached    ClusterIP   None             <none>        42217/TCP                    1h
+
+$ minikube service librenms --url
+http://192.168.99.100:31971
+```
+
+```
+$ kubectl run -it --rm --restart=Never nslookup --image=busybox nslookup librenms
+Server:    10.96.0.10
+Address 1: 10.96.0.10 kube-dns.kube-system.svc.cluster.local
+
+Name:      librenms
+Address 1: 10.109.170.147 librenms.default.svc.cluster.local
+
+```
+
+```
+$ kubectl run -it --rm --restart=Never nslookup --image=busybox nslookup memcached
+Server:    10.96.0.10
+Address 1: 10.96.0.10 kube-dns.kube-system.svc.cluster.local
+
+Name:      memcached
+Address 1: 172.17.0.5 memcached-0.memcached.default.svc.cluster.local
+```
+
+### 4.4 Kubernetes StatefulSet
+
+The [StatefulSet Controller](https://github.com/furhouse/k8s-librenms/blob/master/standalone/librenms-statefulset.yaml#L49) manages the deployment of the different Pods for the standalone or distributed setup.
+
+Initially, the setup of LibreNMS will prepare the database and create an admin user, which is managed by the [initContainer](https://github.com/furhouse/k8s-librenms/blob/master/standalone/librenms-statefulset.yaml#L63). The initContainer should finish gracefully before the LibreNMS container will be started. If the initContainer fails (for example, when MySQL is unavailable), the Pod will be restarted until it succeeds.
+
+In the distributed setup, other services are also declared as StatefulSets, for example rrdcached, since it requires persistent storage. In retrospect, I think I might refactor memcached and pollers as [Deployment Controllers](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/), since those services do not require storage or bootstrapping, and should be stateless.
+
+## 5 Project Details
+
+### 5.1 Factors Addressed by This Project
 
 * Deployment of a LibreNMS on a local Minikube Kubernetes platform.
 * Use of Kubernetes StatefulSets and PersistentVolumeClaims to ensure data is not lost when containers are recycled.
 * Proper configuration of a LibreNMS StatefulSet for fault tolerance.
 
-### 4.2 Factors to Be Addressed by This Project
+### 5.2 Factors to Be Addressed by This Project
 
 * Securing the LibreNMS installtion with SSL certificates.
 * Disabling Transparent Huge Pages to improve performance _(this is disabled by default in the Minikube host nodes)_.
@@ -265,11 +344,11 @@ $ minikube stop
 * Controlling CPU & RAM resource allocation.
 * Adding a [replicated MySQL setup](https://kubernetes.io/docs/tasks/run-application/run-replicated-stateful-application/).
 
-### 4.3 Factors to Be Potentially Addressed by This Project
+### 5.3 Factors to Be Potentially Addressed by This Project
 
 * TBD
 
-### 4.4 Acknowledgements
+### 5.4 Acknowledgements
 
 * [Run a Single-Instance Stateful Application](https://kubernetes.io/docs/tasks/run-application/run-single-instance-stateful-application/), re-used the MySQL deployment.
 * [pkdone/minikube-mongodb-demo by pkdone](https://github.com/pkdone/minikube-mongodb-demo), re-used script and [README.md](https://github.com/pkdone/minikube-mongodb-demo/blob/master/README.md) layout.
